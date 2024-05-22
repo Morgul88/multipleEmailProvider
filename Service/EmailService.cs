@@ -33,29 +33,33 @@ public class EmailService(EmailClient emailClient, ILogger<EmailService> logger)
     public bool SendEmail(EmailRequest emailRequest)
     {
         try
-
         {
-            
-            var result = _emailClient.Send(WaitUntil.Completed,
-                senderAddress: Environment.GetEnvironmentVariable("SenderAdress"),
-                recipientAddress: emailRequest.To,
-                subject: emailRequest.Subject,
-                htmlContent: emailRequest.HtmlBody,
-                plainTextContent: emailRequest.PlainText);
-
-            if (result.HasCompleted)
+            foreach (var recipient in emailRequest.To)
             {
-                return true;
+                var result = _emailClient.Send(WaitUntil.Completed,
+                    senderAddress: Environment.GetEnvironmentVariable("SenderAdress"),
+                    recipientAddress: recipient,
+                    subject: emailRequest.Subject,
+                    htmlContent: emailRequest.HtmlBody,
+                    plainTextContent: emailRequest.PlainText);
+
+                if (!result.HasCompleted)
+                {
+                    // Om en sändningsförfrågan misslyckas, logga och returnera false
+                    _logger.LogError($"Failed to send email to {recipient}");
+                    return false;
+                }
             }
-            
 
-
+            // Om alla e-postmeddelanden skickas framgångsrikt, returnera true
+            return true;
         }
-
         catch (Exception ex)
         {
-            _logger.LogError($"ERROR :  EmailSender.SendEmailAsync :: {ex.Message} ");
+            // Vid eventuella undantag, logga och returnera false
+            _logger.LogError($"ERROR: EmailSender.SendEmailAsync :: {ex.Message}");
+            return false;
         }
-        return false!;
     }
+
 }
